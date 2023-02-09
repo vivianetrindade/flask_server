@@ -50,9 +50,14 @@ def get_inactive_users():
     """
     Endpoint to get all inactive users
     """
-    inactive_users = get_db().execute("SELECT user.f_name, user.l_name FROM user LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid WHERE user_is_in_queue.is_active = 0").fetchall()
+    inactive_users = get_db().execute("""SELECT city.city_name, user.f_name|| ' ' || user.l_name AS name 
+                                    FROM user 
+                                    LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid 
+                                    LEFT JOIN q_is_in_city ON user_is_in_queue.qid = q_is_in_city.qid
+                                    LEFT JOIN city ON q_is_in_city.cid = city.cid
+                                     WHERE user_is_in_queue.is_active = 0""").fetchall()
     print(inactive_users)
-    inactive_users = [dict(zip(["first_name", "last_name"], inactive_user)) for inactive_user in inactive_users]
+    inactive_users = [dict(zip(["city_name", "name"], inactive_user)) for inactive_user in inactive_users]
     
     return Response(json.dumps(inactive_users), status=200, content_type='application/json')
 
@@ -62,8 +67,28 @@ def get_user_queues(name):
     """
     Endpoint to get all queues for a specific user
     """
-    user_queues = get_db().execute("SELECT queue.q_name, city.city_name FROM user LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid LEFT JOIN queue ON user_is_in_queue.qid = queue.qid LEFT JOIN q_is_in_city ON queue.qid = q_is_in_city.qid LEFT JOIN city ON q_is_in_city.cid = city.cid WHERE user.f_name = ?", (name,)).fetchall()
+    user_queues = get_db().execute("SELECT queue.q_name, city.city_name FROM user LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid LEFT JOIN queue ON user_is_in_queue.qid = queue.qid LEFT JOIN q_is_in_city ON queue.qid = q_is_in_city.qid LEFT JOIN city ON q_is_in_city.cid = city.cid WHERE user.f_name = ? AND user_is_in_queue.is_active = 1", (name,)).fetchall()
     print(user_queues)
     user_queues = [dict(zip(["queue_name", "city"], user_queue)) for user_queue in user_queues]
     
     return Response(json.dumps(user_queues), status=200, content_type='application/json')
+
+#Create a POST-API that given a new users first name, last name and age inserts this into the database. The endpoint for this API should be /user.
+@app.route("/user", methods=["POST"])
+def create_user():
+    """
+    Endpoint to create a new user
+    """
+    data = flask.request.json
+    f_name = data.get("f_name")
+    l_name = data.get("l_name")
+    age = data.get("age")
+    #check if user already exists
+    user_exists = get_db().execute("SELECT * FROM user WHERE f_name = ? AND l_name = ? AND age = ?", (f_name, l_name, age)).fetchone()
+    if user_exists:
+        return Response(status=409)
+    print(f_name, l_name, age)
+    get_db().execute("INSERT INTO user (f_name, l_name, age) VALUES (?, ?, ?)", (f_name, l_name, age))
+    get_db().commit()
+    
+    return Response(status=201)
