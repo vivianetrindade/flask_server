@@ -67,7 +67,13 @@ def get_user_queues(name):
     """
     Endpoint to get all queues for a specific user
     """
-    user_queues = get_db().execute("SELECT queue.q_name, city.city_name FROM user LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid LEFT JOIN queue ON user_is_in_queue.qid = queue.qid LEFT JOIN q_is_in_city ON queue.qid = q_is_in_city.qid LEFT JOIN city ON q_is_in_city.cid = city.cid WHERE user.f_name = ? AND user_is_in_queue.is_active = 1", (name,)).fetchall()
+    user_queues = get_db().execute("""SELECT queue.q_name, city.city_name 
+                                    FROM user 
+                                    LEFT JOIN user_is_in_queue ON user.uid = user_is_in_queue.uid 
+                                    LEFT JOIN queue ON user_is_in_queue.qid = queue.qid 
+                                    LEFT JOIN q_is_in_city ON queue.qid = q_is_in_city.qid 
+                                    LEFT JOIN city ON q_is_in_city.cid = city.cid 
+                                    WHERE user.f_name = ? AND user_is_in_queue.is_active = 1""", (name,)).fetchall()
     print(user_queues)
     user_queues = [dict(zip(["queue_name", "city"], user_queue)) for user_queue in user_queues]
     
