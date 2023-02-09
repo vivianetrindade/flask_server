@@ -11,23 +11,12 @@ logger = flask.logging.create_logger(app)
 logger.setLevel(logging.INFO)
 
 
-@app.route("/hi", methods=["GET"])
-def hi():
-    """
-    Endpoint to say Hi
-    """
-    app.logger.info("Saying Hi again testing!")
-    users = get_db().execute("SELECT * from user").fetchall()
-    
-    return Response(str(users), status=200, content_type='text/plain')
-
 @app.route("/users", methods=["GET"])
 def get_users():
     """
     Endpoint to get all users
     """
     users = get_db().execute("SELECT f_name, l_name FROM user").fetchall()
-    print(users)
     users = [dict(zip(["first_name", "last_name"], user)) for user in users]
     
     return Response(json.dumps(users), status=200, content_type='application/json')
@@ -38,8 +27,10 @@ def get_queues():
     """
     Endpoint to get all queues
     """
-    queues = get_db().execute("SELECT queue.q_name, city.city_name FROM q_is_in_city LEFT JOIN queue ON q_is_in_city.qid = queue.qid LEFT JOIN city ON q_is_in_city.cid = city.cid").fetchall()
-    print(queues)
+    queues = get_db().execute("""SELECT queue.q_name, city.city_name 
+                            FROM q_is_in_city 
+                            LEFT JOIN queue ON q_is_in_city.qid = queue.qid 
+                            LEFT JOIN city ON q_is_in_city.cid = city.cid""").fetchall()
     queues = [dict(zip(["queue_id", "city"], queue)) for queue in queues]
     
     return Response(json.dumps(queues), status=200, content_type='application/json')
@@ -56,7 +47,6 @@ def get_inactive_users():
                                     LEFT JOIN q_is_in_city ON user_is_in_queue.qid = q_is_in_city.qid
                                     LEFT JOIN city ON q_is_in_city.cid = city.cid
                                      WHERE user_is_in_queue.is_active = 0""").fetchall()
-    print(inactive_users)
     inactive_users = [dict(zip(["city_name", "name"], inactive_user)) for inactive_user in inactive_users]
     
     return Response(json.dumps(inactive_users), status=200, content_type='application/json')
@@ -74,7 +64,6 @@ def get_user_queues(name):
                                     LEFT JOIN q_is_in_city ON queue.qid = q_is_in_city.qid 
                                     LEFT JOIN city ON q_is_in_city.cid = city.cid 
                                     WHERE user.f_name = ? AND user_is_in_queue.is_active = 1""", (name,)).fetchall()
-    print(user_queues)
     user_queues = [dict(zip(["queue_name", "city"], user_queue)) for user_queue in user_queues]
     
     return Response(json.dumps(user_queues), status=200, content_type='application/json')
@@ -93,7 +82,6 @@ def create_user():
     user_exists = get_db().execute("SELECT * FROM user WHERE f_name = ? AND l_name = ? AND age = ?", (f_name, l_name, age)).fetchone()
     if user_exists:
         return Response(status=409)
-    print(f_name, l_name, age)
     get_db().execute("INSERT INTO user (f_name, l_name, age) VALUES (?, ?, ?)", (f_name, l_name, age))
     get_db().commit()
     
